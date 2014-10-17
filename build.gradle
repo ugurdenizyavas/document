@@ -1,0 +1,143 @@
+//======================================================================
+// PROJECT
+//======================================================================
+
+group = 'com.sony.ebs.octopus3'
+
+//======================================================================
+// REPOSITORIES
+//======================================================================
+
+buildscript {
+    repositories {
+        mavenLocal()
+        maven { url "https://mvn.sony-europe.com/content/groups/global" }
+        maven { url "http://repo.spring.io/libs-release-remote" }
+        maven { url 'http://repo.spring.io/plugins-release' }
+        maven { url 'http://oss.jfrog.org/repo' }
+        maven { url "https://oss.sonatype.org/content/groups/public" }
+        jcenter()
+        mavenCentral()
+    }
+    dependencies {
+        classpath "io.ratpack:ratpack-gradle:$ratpackVersion"
+        classpath 'org.gradle.api.plugins:gradle-nexus-plugin:0.7.1'
+        classpath 'com.github.townsfolk:gradle-release:1.2'
+    }
+}
+
+repositories {
+    mavenLocal()
+    maven { url 'https://mvn.sony-europe.com/content/groups/global' }
+    maven { url 'http://repo.spring.io/libs-release' }
+    maven { url 'http://repo.springsource.org/repo' }
+    maven { url 'http://oss.jfrog.org/repo' }
+    mavenCentral()
+}
+
+//======================================================================
+// PLUGINS
+//======================================================================
+
+apply plugin: "io.ratpack.ratpack-groovy"
+apply plugin: "groovy"
+apply plugin: "idea"
+apply plugin: "nexus"
+apply plugin: 'release'
+
+//======================================================================
+// CONFIGURATIONS
+//======================================================================
+
+sourceCompatibility = '1.7'
+targetCompatibility = '1.7'
+defaultTasks 'clean', 'build'
+applicationDefaultJvmArgs = [
+        "-Dio.netty.eventLoopThreads=20"
+]
+
+configurations {
+    all {
+        exclude module: 'groovy'
+    }
+    sshAntTask {
+        logging.level = LogLevel.INFO
+    }
+}
+
+idea {
+    project {
+        jdkName '1.7'
+        languageLevel '1.7'
+    }
+    module {
+        inheritOutputDirs = false
+        outputDir = compileGroovy.destinationDir
+        testOutputDir = compileTestGroovy.destinationDir
+
+    }
+}
+
+run {
+    systemProperty('storage.root', System.getProperty('storage.root') ?: System.getProperty('java.io.tmpdir'))
+    systemProperty('environment', System.getProperty('environment'))
+    systemProperty('logback.configurationFile', System.getProperty('logback.configurationFile'))
+}
+test {
+    systemProperty('environment', 'test')
+    exclude 'com/sony/ebs/octopus3/amazon/benchmark/**'
+}
+
+//======================================================================
+// DEPENDENCIES
+//======================================================================
+
+dependencies {
+    compile "com.sony.ebs.octopus3:octopus3-commons:1.2-SNAPSHOT"
+    compile "com.sony.ebs.octopus3:octopus3-commons-ratpack:1.2-SNAPSHOT"
+    compile 'org.codehaus.groovy.modules.http-builder:http-builder:0.7.1'
+    compile 'commons-io:commons-io:2.4'
+
+    // SPRING
+    compile "org.springframework:spring-core:$springVersion"
+    compile "org.springframework:spring-context:$springVersion"
+    compile "org.springframework:spring-beans:$springVersion"
+
+    testCompile 'junit:junit:4.11'
+    testCompile 'info.cukes:cucumber-junit:1.1.7'
+    testCompile 'info.cukes:cucumber-groovy:1.1.7'
+
+    // RATPACK
+    testCompile 'org.spockframework:spock-core:0.7-groovy-2.0', {
+        exclude module: 'groovy-all'
+    }
+    compile ratpack.dependency("jackson")
+    compile ratpack.dependency("rx")
+
+    compile 'org.slf4j:slf4j-api:1.7.5'
+    compile 'org.slf4j:jcl-over-slf4j:1.7.5'
+    compile 'ch.qos.logback:logback-core:1.1.2'
+    compile 'ch.qos.logback:logback-classic:1.1.2'
+
+}
+
+//======================================================================
+// TASKS
+//======================================================================
+
+task wrapper(type: Wrapper) {
+    gradleVersion = 2.0
+}
+
+//======================================================================
+// DEPLOY ARTIFACTS
+//======================================================================
+
+nexus {
+    attachSources = true
+    attachTests = false
+    attachJavadoc = false
+    sign = false
+    repositoryUrl = 'https://mvn.sony-europe.com/content/repositories/releases'
+    snapshotRepositoryUrl = 'https://mvn.sony-europe.com/content/repositories/snapshots'
+}
